@@ -46,6 +46,10 @@ class StateDetumble:
             dipole_vector = magnetorquer_dipole(tuple(mag_field), tuple(ang_vel))
             # TODO: Send result to magnetorquer
 
+            # NOTE:
+            # we'll be using magnetorquers on the 4 sides of the satellite
+            # aka the solar panel cells
+
     def stop(self):
         """
         Used by FSM to manually stop run()

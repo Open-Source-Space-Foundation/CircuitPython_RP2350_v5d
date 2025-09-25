@@ -30,6 +30,10 @@ class StateOrient:
             # TODO: we need to decide which springs to run current through
             # this should be based on the sun sensor
             # potential idea: use solar_power_monitor: PowerMonitorProto = INA219Manager(logger, i2c1, 0x44)
+            
+            # NOTE:
+            # get_light from light sensor in pysquared
+            # board.RXO, board.TX0, board.RX1, board.TX1
 
     def stop(self):
         """
