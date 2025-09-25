@@ -7,6 +7,8 @@ import digitalio
 import microcontroller
 from lib.proveskit_rp2350_v5b.register import Register
 from lib.pysquared.beacon import Beacon
+from fsm.data_processes.data_process import DataProcess
+from fsm.fsm import FSM
 from lib.pysquared.cdh import CommandDataHandler
 from lib.pysquared.config.config import Config
 from lib.pysquared.hardware.busio import _spi_init, initialize_i2c_bus
@@ -22,7 +24,7 @@ from lib.pysquared.rtc.manager.microcontroller import MicrocontrollerManager
 from lib.pysquared.watchdog import Watchdog
 from lib.adafruit_mcp230xx.mcp23017 import MCP23017
 from lib.pysquared.hardware.power_monitor.manager.ina219 import INA219Manager
-
+from lib.pysquared.sleep_helper import SleepHelper
 
 from lib.adafruit_tca9548a import TCA9548A  
 
@@ -67,6 +69,9 @@ try:
     board.I2C1_SDA,
     100000,
     )
+
+    watchdog = Watchdog(logger, board.WDT_WDI)
+    watchdog.pet()
 
     i2c0 = initialize_i2c_bus(
         logger,
@@ -188,7 +193,11 @@ try:
 
     battery_power_monitor: PowerMonitorProto = INA219Manager(logger, i2c0, 0x40)
     solar_power_monitor: PowerMonitorProto = INA219Manager(logger, i2c0, 0x41)
+    
+    sleep_helper = SleepHelper(logger, config, watchdog)
 
+    dp_obj = DataProcess()
+    fsm_obj = FSM(dp_obj, logger, beacon)
 
     def nominal_power_loop():
         logger.debug(
@@ -210,6 +219,9 @@ try:
         logger.info("Entering main loop")
         while True:
             # TODO(nateinaction): Modify behavior based on power state
+
+            fsm_obj.execute_fsm_step() # added
+
             nominal_power_loop()
 
     except Exception as e:
