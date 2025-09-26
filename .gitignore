@@ -12,6 +12,5 @@ venv
 typeshed/
 
 # libs
-src/*/lib/*
 !src/*/lib/requirements.txt
 !src/flight-software/lib/proveskit_rp2350_v5b/
