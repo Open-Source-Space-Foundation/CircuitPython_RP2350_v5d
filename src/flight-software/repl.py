@@ -8,6 +8,7 @@ from lib.adafruit_tca9548a import TCA9548A
 from lib.pysquared.beacon import Beacon
 from lib.pysquared.cdh import CommandDataHandler
 from lib.pysquared.config.config import Config
+from lib.pysquared.file_validation.manager.file_validation import FileValidationManager
 from lib.pysquared.hardware.burnwire.manager.burnwire import BurnwireManager
 from lib.pysquared.hardware.busio import _spi_init, initialize_i2c_bus
 from lib.pysquared.hardware.digitalio import initialize_pin
@@ -26,8 +27,6 @@ from lib.pysquared.logger import Logger
 from lib.pysquared.nvm.counter import Counter
 from lib.pysquared.protos.power_monitor import PowerMonitorProto
 from lib.pysquared.rtc.manager.microcontroller import MicrocontrollerManager
-
-# from lib.pysquared.sleep_helper import SleepHelper
 from lib.pysquared.watchdog import Watchdog
 from version import __version__
 
@@ -205,6 +204,8 @@ def all_faces_on():
     load_switch_3.enable_load()
     load_switch_4.enable_load()
 
+
+file_validator = FileValidationManager(logger)
 
 ## Face Sensor Stuff ##
 
