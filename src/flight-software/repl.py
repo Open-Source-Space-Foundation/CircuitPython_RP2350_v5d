@@ -32,6 +32,7 @@ from version import __version__
 
 rtc = MicrocontrollerManager()
 
+
 logger: Logger = Logger(
     error_counter=Counter(0),
     colorized=False,
@@ -180,6 +181,13 @@ load_switch_1 = LoadSwitchManager(FACE1_ENABLE, True)
 load_switch_2 = LoadSwitchManager(FACE2_ENABLE, True)
 load_switch_3 = LoadSwitchManager(FACE3_ENABLE, True)
 load_switch_4 = LoadSwitchManager(FACE4_ENABLE, True)
+
+
+load_switch_0 = LoadSwitchManager(FACE0_ENABLE, True)  # type: ignore , upstream on mcp TODO
+load_switch_1 = LoadSwitchManager(FACE1_ENABLE, True)  # type: ignore , upstream on mcp TODO
+load_switch_2 = LoadSwitchManager(FACE2_ENABLE, True)  # type: ignore , upstream on mcp TODO
+load_switch_3 = LoadSwitchManager(FACE3_ENABLE, True)  # type: ignore , upstream on mcp TODO
+load_switch_4 = LoadSwitchManager(FACE4_ENABLE, True)  # type: ignore , upstream on mcp TODO
 
 
 # Face Control Helper Functions
