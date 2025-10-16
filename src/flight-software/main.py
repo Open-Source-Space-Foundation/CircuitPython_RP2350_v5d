@@ -11,6 +11,7 @@ from lib.proveskit_rp2350_v5b.register import Register
 from lib.pysquared.beacon import Beacon
 from lib.pysquared.cdh import CommandDataHandler
 from lib.pysquared.config.config import Config
+from lib.pysquared.config.jokes_config import JokesConfig
 from lib.pysquared.hardware.busio import _spi_init, initialize_i2c_bus
 from lib.pysquared.hardware.digitalio import initialize_pin
 from lib.pysquared.hardware.imu.manager.lsm6dsox import LSM6DSOXManager
@@ -45,6 +46,7 @@ logger.info(
 
 logger.debug("Initializing Config")
 config: Config = Config("config.json")
+jokes_config: JokesConfig = JokesConfig("jokes.json")
 
 loiter_time: int = 5
 for i in range(loiter_time):
@@ -138,7 +140,7 @@ try:
         0.2,
     )
 
-    cdh = CommandDataHandler(logger, config, uhf_packet_manager)
+    cdh = CommandDataHandler(logger, config, uhf_packet_manager, jokes_config)
 
     beacon = Beacon(
         logger,

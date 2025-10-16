@@ -1,3 +1,4 @@
+import json
 import os
 import time
 
@@ -8,6 +9,7 @@ from lib.adafruit_tca9548a import TCA9548A
 from lib.pysquared.beacon import Beacon
 from lib.pysquared.cdh import CommandDataHandler
 from lib.pysquared.config.config import Config
+from lib.pysquared.config.jokes_config import JokesConfig
 from lib.pysquared.file_validation.manager.file_validation import FileValidationManager
 from lib.pysquared.hardware.burnwire.manager.burnwire import BurnwireManager
 from lib.pysquared.hardware.busio import _spi_init, initialize_i2c_bus
@@ -49,6 +51,7 @@ watchdog.pet()
 
 logger.debug("Initializing Config")
 config: Config = Config("config.json")
+jokes_config: JokesConfig = JokesConfig("jokes.json")
 
 
 def get_temp(sensor):
@@ -163,8 +166,7 @@ uhf_packet_manager = PacketManager(
     0.2,
 )
 
-cdh = CommandDataHandler(logger, config, uhf_packet_manager)
-
+cdh = CommandDataHandler(logger, config, uhf_packet_manager, jokes_config)
 beacon = Beacon(
     logger,
     config.cubesat_name,
@@ -337,3 +339,174 @@ burnwire1_fire = initialize_pin(
 antenna_deployment = BurnwireManager(
     logger, burnwire_heater_enable, burnwire1_fire, enable_logic=True
 )
+
+
+def test_magnetorquer():
+    print("____ Test: Magnetorquer _______")
+    m_val_1 = magnetometer.get_magnetic_field().value
+    print("Magnetorquer value (initial):", m_val_1)
+    print("You have 2 seconds to move the FC board")
+    time.sleep(2)
+    m_val_2 = magnetometer.get_magnetic_field().value
+    print("Magnetorquer value (after):", m_val_2)
+    diff = tuple(m_val_1[i] - m_val_2[i] for i in range(3))
+    print("Difference:", diff)
+    return input("Is this acceptable? (Y/N): ").strip().upper()
+
+
+def test_imu():
+    print("\n____ Test: IMU Sensors _______")
+    imu_results = {}
+    # Acceleration
+    acc1 = imu.get_acceleration().value
+    print("Initial acceleration:", acc1)
+    print("You have 2 seconds to move the FC board")
+    time.sleep(2)
+    acc2 = imu.get_acceleration().value
+    print("New acceleration:", acc2)
+    acc_diff = tuple(acc1[i] - acc2[i] for i in range(3))
+    print("Acceleration difference:", acc_diff)
+    imu_results["acceleration"] = input("Is this acceptable? (Y/N): ").strip().upper()
+    # Angular velocity
+    ang1 = imu.get_angular_velocity().value
+    print("Initial angular velocity:", ang1)
+    print("You have 2 seconds to move the FC board")
+    time.sleep(2)
+    ang2 = imu.get_angular_velocity().value
+    print("New angular velocity:", ang2)
+    ang_diff = tuple(ang1[i] - ang2[i] for i in range(3))
+    print("Angular velocity difference:", ang_diff)
+    imu_results["angular_velocity"] = (
+        input("Is this acceptable? (Y/N): ").strip().upper()
+    )
+    # Temperature
+    temp1 = imu.get_temperature().value
+    print("Initial temperature:", temp1)
+    print("You have 10 seconds to heat the temp sensor")
+    time.sleep(10)
+    temp2 = imu.get_temperature().value
+    print("New temperature:", temp2)
+    temp_diff = temp1 - temp2
+    print("Temperature difference:", temp_diff)
+    imu_results["temperature"] = input("Is this acceptable? (Y/N): ").strip().upper()
+    return imu_results
+
+
+def test_burnwire():
+    print("\n____ Test: Burnwire _______")
+    choice = input("Would you like to try the burnwire test (Y/N)?: ").strip().lower()
+    if choice == "y":
+        print("Burning for 5 seconds....")
+        antenna_deployment.burn(5)
+        print("Finished burning.")
+        return input("Did the burnwire get hot? (Y/N): ").strip().upper()
+    return "N/A"
+
+
+def test_light_sensors():
+    print("\n____ Test: LEDs and Light Sensors _______")
+    load_switches = [
+        load_switch_0,
+        load_switch_1,
+        load_switch_2,
+        load_switch_3,
+        load_switch_4,
+    ]
+    light_results = {}
+    for i, switch in enumerate(load_switches):
+        print(f"\nTesting Load Switch {i}")
+        switch.disable_load()
+        led_off = input("Did a face LED turn OFF? (Y/N): ").strip().upper()
+        switch.enable_load()
+        led_on = input("Did the face LED turn ON? (Y/N): ").strip().upper()
+        sensor = light_sensors[i]
+        if sensor is not None:
+            lux_before = sensor.get_lux().value
+            print("Initial lux:", lux_before)
+            time.sleep(2)
+            lux_after = sensor.get_lux().value
+            print("New lux:", lux_after)
+            sensor_result = (
+                input("Did the lux value change noticeably? (Y/N): ").strip().upper()
+            )
+        else:
+            lux_before = lux_after = "N/A"
+            sensor_result = "N"
+        light_results[f"load_switch_{i}"] = {
+            "led_off": led_off,
+            "led_on": led_on,
+            "lux_changed": sensor_result,
+        }
+    return light_results
+
+
+def test_radio():
+    print("\n____ Test: UHF Radio _______")
+    message = {"command": "ping"}
+    print("Sending Ping Command...")
+    uhf_packet_manager.send(json.dumps(message).encode("utf-8"))
+    count = 0
+    result = "N"
+    while count < 10:
+        count += 1
+        b = uhf_packet_manager.listen(1)
+        time.sleep(1)
+        uhf_packet_manager.send(json.dumps(message).encode("utf-8"))
+
+        if b is not None:
+            if b != b"ACK":
+                print("Received not ACK :")
+            else:
+                print("Received ACK response:", b.decode("utf-8"))
+                result = "Y"
+                break
+    return result
+
+
+def test_battery_monitor():
+    print("\n____ Test: Battery Power Monitor _______")
+    value_with_batteries = battery_power_monitor.get_bus_voltage().value
+    print("Voltage with batteries:", value_with_batteries)
+    input("Please unplug the batteries and press Enter when done.")
+    value_without_batteries = battery_power_monitor.get_bus_voltage().value
+    print("Voltage without batteries:", value_without_batteries)
+    if (value_with_batteries - value_without_batteries) >= 4.0:
+        print("Voltage dropped by more than 4V. PASS.")
+        return "Y"
+    else:
+        print("Voltage drop too small. FAIL.")
+        return "N"
+
+
+def test_solar_monitor():
+    print("\n____ Test: Solar Power Monitor _______")
+    solar_with_light = solar_power_monitor.get_bus_voltage().value
+    print("Voltage with light:", solar_with_light)
+    input("Please cover the solar panels and press Enter when ready.")
+    solar_without_light = solar_power_monitor.get_bus_voltage().value
+    print("Voltage without light:", solar_without_light)
+    if (solar_with_light - solar_without_light) >= 0.5:
+        print("Solar voltage dropped significantly. PASS.")
+        return "Y"
+    else:
+        print("Solar voltage did not drop enough. FAIL.")
+        return "N"
+
+
+# ========== MAIN FUNCTION ==========
+
+
+def test_all():
+    results = {}
+    results["magnetorquer"] = test_magnetorquer()
+    imu_results = test_imu()
+    results.update({f"imu_{k}": v for k, v in imu_results.items()})
+    results["burnwire"] = test_burnwire()
+    light_results = test_light_sensors()
+    results.update(light_results)
+    results["radio_send"] = test_radio()
+    results["battery_power_monitor"] = test_battery_monitor()
+    results["solar_power_monitor"] = test_solar_monitor()
+    print("\n===== FINAL RESULTS =====")
+    for key, val in results.items():
+        print(f"{key}: {val}")

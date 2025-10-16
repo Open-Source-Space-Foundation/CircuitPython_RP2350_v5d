@@ -2,3 +2,4 @@ adafruit-circuitpython-asyncio @ git+https://github.com/adafruit/adafruit_circui
 adafruit-circuitpython-rfm==1.0.3
 adafruit-circuitpython-ticks==1.1.1
 pysquared-ground-station @ git+https://github.com/proveskit/pysquared@d1b22be#subdirectory=circuitpython-workspaces/ground-station
+circuitpython-hmac @ git+https://github.com/jimbobbennett/CircuitPython_HMAC@0.2.1
