@@ -5,7 +5,7 @@
 import asyncio
 import board
 import numpy as np
-from src/flight-software/lib/pysquared/hardware/light_sensor/manager import get_light
+import from lib.pysquared.hardware.light_sensor.manager.veml7700 import VEML7700Manager.get_light
 
 # ++++++++++++++ Functions: Helper ++++++++++++++ #
 class StateOrient:
@@ -31,11 +31,17 @@ class StateOrient:
             # defining which variable corresponds to which coordinate/panel
 
 
-            light1 = get_light(board.vsolar1)
-            light2 = get_light(board.solar2)
-            light3 = get_light(board.vsolar3)
-            light4 = get_light(board.vsolar4)
-            lights = [light1, light2, light3, light4]
+            try:
+                light1 = get_light(board.vsolar1)
+                light2 = get_light(board.solar2)
+                light3 = get_light(board.vsolar3)
+                light4 = get_light(board.vsolar4)
+                lights = [light1, light2, light3, light4]
+            except Exception as e:
+                self.logger.error(f"Failed to read light sensors: {e}")
+                # Use default values if sensors fail
+                from src.flight-software.lib.pysquared.sensor_reading.light import Light
+                lights = [Light(0.0), Light(0.0), Light(0.0), Light(0.0)]
 
 
             pos_xvec = np.array([1, 0])
@@ -45,27 +51,40 @@ class StateOrient:
             lightvecs = [pos_xvec, neg_xvec, pos_yvec, neg_yvec]
 
             # weighted light vectors
+            light_vec = [np.array([0.0, 0.0]) for _ in range(4)]
             for i in range(4):
-                lightvecs[i] = lights[i] * lightvecs[i]
+                light_vec[i] = lights[i] * lightvecs[i]
 
 
-            # norm sum of weighted light vectors, net_vec is the "sun vector"
-            net_vec = np.linalg.norm(lightvecs[1] + lightvecs[2] + lightvecs[3] + lightvecs[4])
+            # gets the magnitude of the sun vector
+
+            # norm sum of weighted light vectors, net_vec is the sun vector
+            net_vec = np.linalg.norm(light_vec[1] + light_vec[2] + light_vec[3] + light_vec[4])
 
 
-            pointvecs = [pos_xvec, neg_xvec, pos_yvec, neg_yvec, np.array([1, 1]), np.array([1, -1]), np.array([-1, 1]), np.array([-1, -1])]
-            # find minimum dot product between the "sun vector" and possible pointing positions
-            min_dot_product = -1
+            point_vecs = [pos_xvec, neg_xvec, pos_yvec, neg_yvec, np.array([1, 1]), np.array([1, -1]), np.array([-1, 1]), np.array([-1, -1])]
+            # find maximum dot product between the
+            max_dot_product = -1
+            best_direction = 0
             for i in range(8):
-                dot_product = np.dot(net_vec, pointvecs[i])
-                if dot_product < min_dot_product:
-                    min_dot_product = dot_product
-                    min_index = i
+                dot_product = np.dot(net_vec, point_vecs[i])
+                if dot_product > max_dot_product:
+                    max_dot_product = dot_product
+                    best_direction = i
 
-            # activate the spring corresponding to min_index
-            # TBD
-
+            # Log the results
+            self.logger.info(f"Sun vector: {net_vec}")
+            self.logger.info(f"Best direction: {best_direction}, Alignment: {max_dot_product:.3f}")
+            
+            # activate the spring corresponding to best_direction
+            # TODO: Implement actual spring activation based on best_direction
+            # Direction mapping:
+            # 0: +X, 1: -X, 2: +Y, 3: -Y
+            # 4: +X+Y diagonal, 5: +X-Y diagonal  
+            # 6: -X+Y diagonal, 7: -X-Y diagonal
+            
             # NOTE:
+            # consider edge case of net vec = 0, don't activate any springs?
             # get_light from light sensor in pysquared
             # board.RXO, board.TX0, board.RX1, board.TX1
 
