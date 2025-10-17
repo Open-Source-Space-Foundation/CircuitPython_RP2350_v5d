@@ -3,6 +3,7 @@
 
 # ++++++++++++++ Imports/Installs ++++++++++++++ #
 import asyncio
+import board
 import numpy as np
 from src/flight-software/lib/pysquared/hardware/light_sensor/manager import get_light
 
@@ -44,20 +45,16 @@ class StateOrient:
             lightvecs = [pos_xvec, neg_xvec, pos_yvec, neg_yvec]
 
             # weighted light vectors
-
-            light_vec = np.array([])
             for i in range(4):
-                light_vec[i] = lights[i] * lightvecs[i]
+                lightvecs[i] = lights[i] * lightvecs[i]
 
 
-            # gets the magnitude of the sun vector
-
-            # norm sum of weighted light vectors
-            net_vec = np.linalg.norm(light_vec[1] + light_vec[2] + light_vec[3] + light_vec[4])
+            # norm sum of weighted light vectors, net_vec is the "sun vector"
+            net_vec = np.linalg.norm(lightvecs[1] + lightvecs[2] + lightvecs[3] + lightvecs[4])
 
 
             pointvecs = [pos_xvec, neg_xvec, pos_yvec, neg_yvec, np.array([1, 1]), np.array([1, -1]), np.array([-1, 1]), np.array([-1, -1])]
-            # find minimum dot product between the
+            # find minimum dot product between the "sun vector" and possible pointing positions
             min_dot_product = -1
             for i in range(8):
                 dot_product = np.dot(net_vec, pointvecs[i])
@@ -66,7 +63,7 @@ class StateOrient:
                     min_index = i
 
             # activate the spring corresponding to min_index
-        
+            # TBD
 
             # NOTE:
             # get_light from light sensor in pysquared
