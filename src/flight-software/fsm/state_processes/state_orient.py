@@ -41,12 +41,13 @@ class StateOrient:
             neg_xvec = np.array([-1, 0])
             pos_yvec = np.array([0, 1])
             neg_yvec = np.array([0, -1])
-            pointvecs = [pos_xvec, neg_xvec, pos_yvec, neg_yvec]
+            lightvecs = [pos_xvec, neg_xvec, pos_yvec, neg_yvec]
 
             # weighted light vectors
 
+            light_vec = np.array([])
             for i in range(4):
-                light_vec[i] = lights[i] * pointvecs[i]
+                light_vec[i] = lights[i] * lightvecs[i]
 
 
             # gets the magnitude of the sun vector
@@ -55,9 +56,9 @@ class StateOrient:
             net_vec = np.linalg.norm(light_vec[1] + light_vec[2] + light_vec[3] + light_vec[4])
 
 
-            pointvecs[8] = [pos_xvec, neg_xvec, pos_yvec, neg_yvec, np.array([1, 1]), np.array([1, -1]), np.array([-1, 1]), np.array([-1, -1])]
+            pointvecs = [pos_xvec, neg_xvec, pos_yvec, neg_yvec, np.array([1, 1]), np.array([1, -1]), np.array([-1, 1]), np.array([-1, -1])]
             # find minimum dot product between the
-            min_dot_product = 1
+            min_dot_product = -1
             for i in range(8):
                 dot_product = np.dot(net_vec, pointvecs[i])
                 if dot_product < min_dot_product:
@@ -65,7 +66,7 @@ class StateOrient:
                     min_index = i
 
             # activate the spring corresponding to min_index
-            
+        
 
             # NOTE:
             # get_light from light sensor in pysquared
