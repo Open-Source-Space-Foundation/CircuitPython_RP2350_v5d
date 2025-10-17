@@ -3,8 +3,9 @@
 
 # ++++++++++++++ Imports/Installs ++++++++++++++ #
 import asyncio
+import board
 import numpy as np
-from src/flight-software/lib/pysquared/hardware/light_sensor/manager import get_light
+import from lib.pysquared.hardware.light_sensor.manager.veml7700 import VEML7700Manager.get_light
 
 # ++++++++++++++ Functions: Helper ++++++++++++++ #
 class StateOrient:
@@ -47,8 +48,9 @@ class StateOrient:
             neg_xvec = np.array([-1, 0])
             pos_yvec = np.array([0, 1])
             neg_yvec = np.array([0, -1])
-            pointvecs = [pos_xvec, neg_xvec, pos_yvec, neg_yvec]
+            lightvecs = [pos_xvec, neg_xvec, pos_yvec, neg_yvec]
 
+<<<<<<< HEAD
             # Initialize weighted light vectors array
             light_vec = [np.array([0.0, 0.0]) for _ in range(4)]
             
