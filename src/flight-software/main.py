@@ -113,11 +113,11 @@ try:
         config.radio,
         spi1,
         SPI1_CS0,
-        initialize_pin(logger, board.RF2_RST, digitalio.Direction.OUTPUT, True),
+        initialize_pin(logger, board.RF2_RST, digitalio.Direction.OUTPUT, True),  # type: ignore[arg-type]
         RF2_IO0,
         2.4,
-        initialize_pin(logger, board.RF2_TX_EN, digitalio.Direction.OUTPUT, False),
-        initialize_pin(logger, board.RF2_RX_EN, digitalio.Direction.OUTPUT, False),
+        initialize_pin(logger, board.RF2_TX_EN, digitalio.Direction.OUTPUT, False),  # type: ignore[arg-type]
+        initialize_pin(logger, board.RF2_RX_EN, digitalio.Direction.OUTPUT, False),  # type: ignore[arg-type]
     )
 
     uhf_radio = RFM9xManager(
