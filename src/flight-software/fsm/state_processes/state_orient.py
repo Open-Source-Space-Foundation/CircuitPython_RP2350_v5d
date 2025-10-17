@@ -30,11 +30,17 @@ class StateOrient:
             # defining which variable corresponds to which coordinate/panel
 
 
-            light1 = get_light(board.vsolar1)
-            light2 = get_light(board.solar2)
-            light3 = get_light(board.vsolar3)
-            light4 = get_light(board.vsolar4)
-            lights = [light1, light2, light3, light4]
+            try:
+                light1 = get_light(board.vsolar1)
+                light2 = get_light(board.solar2)
+                light3 = get_light(board.vsolar3)
+                light4 = get_light(board.vsolar4)
+                lights = [light1, light2, light3, light4]
+            except Exception as e:
+                self.logger.error(f"Failed to read light sensors: {e}")
+                # Use default values if sensors fail
+                from src.flight-software.lib.pysquared.sensor_reading.light import Light
+                lights = [Light(0.0), Light(0.0), Light(0.0), Light(0.0)]
 
 
             pos_xvec = np.array([1, 0])
@@ -43,30 +49,54 @@ class StateOrient:
             neg_yvec = np.array([0, -1])
             pointvecs = [pos_xvec, neg_xvec, pos_yvec, neg_yvec]
 
-            # weighted light vectors
-
-            for i in range(4):
-                light_vec[i] = lights[i] * pointvecs[i]
-
-
-            # gets the magnitude of the sun vector
-
-            # norm sum of weighted light vectors
-            net_vec = np.linalg.norm(light_vec[1] + light_vec[2] + light_vec[3] + light_vec[4])
-
-
-            pointvecs[8] = [pos_xvec, neg_xvec, pos_yvec, neg_yvec, np.array([1, 1]), np.array([1, -1]), np.array([-1, 1]), np.array([-1, -1])]
-            # find minimum dot product between the
-            min_dot_product = 1
-            for i in range(8):
-                dot_product = np.dot(net_vec, pointvecs[i])
-                if dot_product < min_dot_product:
-                    min_dot_product = dot_product
-                    min_index = i
-
-            # activate the spring corresponding to min_index
+            # Initialize weighted light vectors array
+            light_vec = [np.array([0.0, 0.0]) for _ in range(4)]
             
+            # Create weighted light vectors
+            for i in range(4):
+                light_vec[i] = lights[i].value * pointvecs[i]
 
+            # Calculate net sun vector (sum of weighted vectors)
+            net_vec = light_vec[0] + light_vec[1] + light_vec[2] + light_vec[3]
+            
+            # Normalize the net vector to get sun direction
+            net_vec_magnitude = np.linalg.norm(net_vec)
+            if net_vec_magnitude > 0:
+                net_vec_normalized = net_vec / net_vec_magnitude
+            else:
+                # If no light detected, default to +X direction
+                net_vec_normalized = np.array([1.0, 0.0])
+
+            # Define 8 possible pointing directions (2D)
+            pointing_directions = [
+                pos_xvec, neg_xvec, pos_yvec, neg_yvec,  # 4 cardinal directions
+                np.array([1, 1]), np.array([1, -1]),     # 2 diagonal directions
+                np.array([-1, 1]), np.array([-1, -1])    # 2 more diagonal directions
+            ]
+            
+            # Normalize pointing directions
+            pointing_directions = [dir / np.linalg.norm(dir) for dir in pointing_directions]
+            
+            # Find maximum dot product (best alignment with sun)
+            max_dot_product = -1
+            best_direction = 0
+            for i in range(8):
+                dot_product = np.dot(net_vec_normalized, pointing_directions[i])
+                if dot_product > max_dot_product:
+                    max_dot_product = dot_product
+                    best_direction = i
+
+            # Log the results
+            self.logger.info(f"Sun vector: {net_vec_normalized}")
+            self.logger.info(f"Best direction: {best_direction}, Alignment: {max_dot_product:.3f}")
+            
+            # activate the spring corresponding to best_direction
+            # TODO: Implement actual spring activation based on best_direction
+            # Direction mapping:
+            # 0: +X, 1: -X, 2: +Y, 3: -Y
+            # 4: +X+Y diagonal, 5: +X-Y diagonal  
+            # 6: -X+Y diagonal, 7: -X-Y diagonal
+            
             # NOTE:
             # get_light from light sensor in pysquared
             # board.RXO, board.TX0, board.RX1, board.TX1
