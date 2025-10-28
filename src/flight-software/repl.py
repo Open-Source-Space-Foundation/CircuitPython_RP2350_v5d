@@ -510,3 +510,74 @@ def test_all():
     print("\n===== FINAL RESULTS =====")
     for key, val in results.items():
         print(f"{key}: {val}")
+
+def test_power():
+    """
+    Measures and accumulates power consumption through the battery power monitor.
+    Calculates power (watts) = voltage (V) × current (A) and accumulates total energy.
+    Press Ctrl+C to interrupt and see the total accumulated energy consumption.
+    """
+    print("____ Test: Power Consumption _______")
+    print("Starting power measurement...")
+    print("Press Ctrl+C to stop measurement and see total energy consumed")
+    print()
+    
+    total_energy_wh = 0.0  # Total energy in watt-hours
+    start_time = time.monotonic()
+    last_sample_time = start_time
+    sample_count = 0
+    
+    try:
+        while True:
+            current_time = time.monotonic()
+            
+            # Get voltage and current measurements
+            try:
+                voltage = battery_power_monitor.get_bus_voltage().value  # in volts
+                current_ma = battery_power_monitor.get_current().value   # in milliamps
+                current_a = current_ma / 1000.0  # convert mA to A
+                
+                # Calculate instantaneous power in watts
+                power_w = voltage * current_a
+                
+                # Calculate time elapsed since last sample
+                time_elapsed_h = (current_time - last_sample_time) / 3600.0  # convert seconds to hours
+                
+                # Add energy consumed in this interval (power × time)
+                energy_interval_wh = power_w * time_elapsed_h
+                total_energy_wh += energy_interval_wh
+                
+                sample_count += 1
+                
+                # Display current readings every 10 samples
+                if sample_count % 10 == 0:
+                    elapsed_total = current_time - start_time
+                    print(f"Sample {sample_count:4d} | V: {voltage:6.3f}V | I: {current_ma:7.2f}mA | P: {power_w:6.3f}W | Total Energy: {total_energy_wh:.6f}Wh | Time: {elapsed_total:.1f}s")
+                
+                last_sample_time = current_time
+                
+            except (OSError, RuntimeError, ValueError) as e:
+                print(f"Error reading power monitor: {e}")
+            
+            # Small delay between samples (approximately 100ms)
+            time.sleep(0.1)
+            
+    except KeyboardInterrupt:
+        # Calculate final statistics
+        total_time_s = time.monotonic() - start_time
+        total_time_h = total_time_s / 3600.0
+        
+        print("\n" + "="*60)
+        print("POWER MEASUREMENT COMPLETED")
+        print("="*60)
+        print(f"Total measurement time: {total_time_s:.2f} seconds ({total_time_h:.4f} hours)")
+        print(f"Total samples taken: {sample_count}")
+        print(f"Sample rate: {sample_count/total_time_s:.2f} samples/second")
+        print(f"Total energy consumed: {total_energy_wh:.6f} watt-hours")
+        print(f"Total energy consumed: {total_energy_wh * 1000:.3f} milliwatt-hours")
+        
+        if total_time_h > 0:
+            avg_power_w = total_energy_wh / total_time_h
+            print(f"Average power consumption: {avg_power_w:.6f} watts")
+        
+        print("="*60)
