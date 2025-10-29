@@ -24,7 +24,7 @@ from lib.pysquared.hardware.power_monitor.manager.ina219 import INA219Manager
 from lib.pysquared.hardware.radio.manager.rfm9x import RFM9xManager
 from lib.pysquared.hardware.radio.manager.sx1280 import SX1280Manager
 from lib.pysquared.hardware.radio.packetizer.packet_manager import PacketManager
-from lib.pysquared.hardware.temperature_sensor.manager.mcp9808 import MCP9808Manager
+from lib.pysquared.hardware.temperature_sensor.manager.tmp112 import TMP112Manager
 from lib.pysquared.logger import Logger
 from lib.pysquared.nvm.counter import Counter
 from lib.pysquared.protos.power_monitor import PowerMonitorProto
@@ -280,46 +280,46 @@ temp_sensors = []
 #     temp_sensor6 = None
 # temp_sensors.append(temp_sensor6)
 
-# TCA-connected temp sensors
+# TCA-connected temp sensors (TMP112 default address 0x48)
 try:
-    sensor = MCP9808Manager(logger, tca[0], addr=27)
+    sensor = TMP112Manager(logger, tca[0])  # type: ignore[arg-type]
     temp_sensors.append(sensor)
 except Exception:
     logger.debug("WARNING!!! Temp sensor (TCA[0]) failed")
     temp_sensors.append(None)
 try:
-    sensor = MCP9808Manager(logger, tca[1], addr=27)
+    sensor = TMP112Manager(logger, tca[1])  # type: ignore[arg-type]
     temp_sensors.append(sensor)
 except Exception:
     logger.debug("WARNING!!! Temp sensor 1 failed")
     temp_sensors.append(None)
 try:
-    sensor = MCP9808Manager(logger, tca[2], addr=27)
+    sensor = TMP112Manager(logger, tca[2])  # type: ignore[arg-type]
     temp_sensors.append(sensor)
 except Exception:
     logger.debug("WARNING!!! Temp sensor 2 failed")
     temp_sensors.append(None)
 try:
-    sensor = MCP9808Manager(logger, tca[3], addr=27)
+    sensor = TMP112Manager(logger, tca[3])  # type: ignore[arg-type]
     temp_sensors.append(sensor)
 except Exception:
     logger.debug("WARNING!!! Temp sensor 3 failed")
     temp_sensors.append(None)
 try:
-    sensor = MCP9808Manager(logger, tca[5], addr=24)
+    sensor = TMP112Manager(logger, tca[5])  # type: ignore[arg-type]
     temp_sensors.append(sensor)
 except Exception:
     logger.debug("WARNING!!! Temp sensor 4 failed (Z- Face Bottom pins")
     temp_sensors.append(None)
 # these are the bottom 6 pins on the z- face connection, uncomment if that is where you plug in a face for the z- board
 # try:
-#     sensor = MCP9808Manager(logger, tca[6], addr=24)
+#     sensor = TMP112Manager(logger, tca[6])
 #     temp_sensors.append(sensor)
 # except Exception:
 #     logger.debug("WARNING!!! Temp sensor 4 failed (Z- Face Top pins)")
 # #     temp_sensors.append(None)
 try:
-    sensor = MCP9808Manager(logger, tca[7], addr=25)
+    sensor = TMP112Manager(logger, tca[7])  # type: ignore[arg-type]
     temp_sensors.append(sensor)
 except Exception:
     logger.debug("WARNING!!! Temp sensor 5 failed (Antenna Board)")
