@@ -511,73 +511,146 @@ def test_all():
     for key, val in results.items():
         print(f"{key}: {val}")
 
+
+def read_power_file():
+    with open("/sd/power_data.txt", "r") as f:
+        data = f.read()
+    print(data)
+
+
+def erase_power_file():
+    with open("/sd/power_data.txt", "w") as f:
+        f.write("Power data file erased\n")
+
+
+def print_to_file_and_console(log_file, message):
+    print(message)
+    log_file.write(message + "\n")
+    log_file.flush()
+
+
 def test_power():
     """
     Measures and accumulates power consumption through the battery power monitor.
     Calculates power (watts) = voltage (V) × current (A) and accumulates total energy.
     Press Ctrl+C to interrupt and see the total accumulated energy consumption.
     """
-    print("____ Test: Power Consumption _______")
-    print("Starting power measurement...")
-    print("Press Ctrl+C to stop measurement and see total energy consumed")
-    print()
-    
-    total_energy_wh = 0.0  # Total energy in watt-hours
-    start_time = time.monotonic()
-    last_sample_time = start_time
-    sample_count = 0
-    
-    try:
-        while True:
-            current_time = time.monotonic()
-            
-            # Get voltage and current measurements
-            try:
-                voltage = battery_power_monitor.get_bus_voltage().value  # in volts
-                current_ma = battery_power_monitor.get_current().value   # in milliamps
-                current_a = current_ma / 1000.0  # convert mA to A
-                
-                # Calculate instantaneous power in watts
-                power_w = voltage * current_a
-                
-                # Calculate time elapsed since last sample
-                time_elapsed_h = (current_time - last_sample_time) / 3600.0  # convert seconds to hours
-                
-                # Add energy consumed in this interval (power × time)
-                energy_interval_wh = power_w * time_elapsed_h
-                total_energy_wh += energy_interval_wh
-                
-                sample_count += 1
-                
-                # Display current readings every 10 samples
-                if sample_count % 10 == 0:
-                    elapsed_total = current_time - start_time
-                    print(f"Sample {sample_count:4d} | V: {voltage:6.3f}V | I: {current_ma:7.2f}mA | P: {power_w:6.3f}W | Total Energy: {total_energy_wh:.6f}Wh | Time: {elapsed_total:.1f}s")
-                
-                last_sample_time = current_time
-                
-            except (OSError, RuntimeError, ValueError) as e:
-                print(f"Error reading power monitor: {e}")
-            
-            # Small delay between samples (approximately 100ms)
-            time.sleep(0.1)
-            
-    except KeyboardInterrupt:
-        # Calculate final statistics
-        total_time_s = time.monotonic() - start_time
-        total_time_h = total_time_s / 3600.0
-        
-        print("\n" + "="*60)
-        print("POWER MEASUREMENT COMPLETED")
-        print("="*60)
-        print(f"Total measurement time: {total_time_s:.2f} seconds ({total_time_h:.4f} hours)")
-        print(f"Total samples taken: {sample_count}")
-        print(f"Sample rate: {sample_count/total_time_s:.2f} samples/second")
-        print(f"Total energy consumed: {total_energy_wh:.6f} watt-hours")
-        print(f"Total energy consumed: {total_energy_wh * 1000:.3f} milliwatt-hours")
-        
-        if total_time_h > 0:
-            avg_power_w = total_energy_wh / total_time_h
-            print(f"Average power consumption: {avg_power_w:.6f} watts")
-        
-        print("="*60)
+    # open log file once and provide a helper that mirrors print -> file
+    log_path = "/sd/power_data.txt"
+    with open(log_path, "a") as log_file:
+        print_to_file_and_console(log_file, "____ Test: Power Consumption _______")
+        print_to_file_and_console(log_file, "Starting power measurement...")
+        print_to_file_and_console(
+            log_file, "Press Ctrl+C to stop measurement and see total energy consumed"
+        )
+        print_to_file_and_console(log_file, "")
+
+        total_energy_wh = 0.0  # Total energy in watt-hours
+        start_time = time.monotonic()
+        last_sample_time = start_time
+        sample_count = 0
+
+        try:
+            while True:
+                current_time = time.monotonic()
+                battery_power_monitor._ina219._current_lsb = 0.325
+                battery_power_monitor._ina219.calibration = 65000
+
+                # Get voltage and current measurements
+                try:
+                    voltage = battery_power_monitor.get_bus_voltage().value  # in volts
+                    current_ma = (
+                        battery_power_monitor.get_current().value
+                    )  # in milliamps
+                    current_a = current_ma / 1000.0  # convert mA to A
+
+                    # Calculate instantaneous power in watts
+                    power_w = voltage * current_a
+
+                    # Calculate time elapsed since last sample
+                    time_elapsed_h = (
+                        current_time - last_sample_time
+                    ) / 3600.0  # convert seconds to hours
+
+                    # Add energy consumed in this interval (power × time)
+                    energy_interval_wh = power_w * time_elapsed_h
+                    total_energy_wh += energy_interval_wh
+
+                    sample_count += 1
+
+                    # Display current readings every 10 samples
+                    if sample_count % 10 == 0:
+                        elapsed_total = current_time - start_time
+                        print_to_file_and_console(
+                            log_file,
+                            f"Sample {sample_count:4d} | V: {voltage:6.3f}V | I: {current_ma:7.2f}mA | P: {power_w:6.3f}W | Total Energy: {total_energy_wh:.6f}Wh | Time: {elapsed_total:.1f}s",
+                        )
+
+                    last_sample_time = current_time
+
+                except (OSError, RuntimeError, ValueError) as e:
+                    print_to_file_and_console(
+                        log_file, f"Error reading power monitor: {e}"
+                    )
+
+                # Small delay between samples (approximately 100ms)
+                time.sleep(0.1)
+
+        except KeyboardInterrupt:
+            # Calculate final statistics
+            total_time_s = time.monotonic() - start_time
+            total_time_h = total_time_s / 3600.0
+
+            print_to_file_and_console(log_file, "\n" + "=" * 60)
+            print_to_file_and_console(log_file, "POWER MEASUREMENT COMPLETED")
+            print_to_file_and_console(log_file, "=" * 60)
+            print_to_file_and_console(
+                log_file,
+                f"Total measurement time: {total_time_s:.2f} seconds ({total_time_h:.4f} hours)",
+            )
+            print_to_file_and_console(log_file, f"Total samples taken: {sample_count}")
+            if total_time_s > 0:
+                print_to_file_and_console(
+                    log_file,
+                    f"Sample rate: {sample_count/total_time_s:.2f} samples/second",
+                )
+            else:
+                print_to_file_and_console(log_file, "Sample rate: N/A (zero time)")
+            print_to_file_and_console(
+                log_file, f"Total energy consumed: {total_energy_wh:.6f} watt-hours"
+            )
+            print_to_file_and_console(
+                log_file,
+                f"Total energy consumed: {total_energy_wh * 1000:.3f} milliwatt-hours",
+            )
+
+            if total_time_h > 0:
+                avg_power_w = total_energy_wh / total_time_h
+                print_to_file_and_console(
+                    log_file, f"Average power consumption: {avg_power_w:.6f} watts"
+                )
+
+            print_to_file_and_console(log_file, "=" * 60)
+        finally:
+            # ensure log file is closed
+            if log_file is not None:
+                try:
+                    log_file.flush()
+                except Exception:
+                    pass
+                try:
+                    log_file.close()
+                except Exception:
+                    pass
+
+
+def erase_boot_file():
+    with open("boot.py", "w") as f:
+        f.write("# boot file erased\n")
+
+
+def put_back_boot_file():
+    with open("boot.py", "w") as f:
+        f.write(
+            'import storage\n\nstorage.disable_usb_drive()  # Disable USB so we can write to the file system\n\n\ntry:\n    with open("/sd/power_data.txt", "a") as f:\n        f.write("STARTING POWER LOGGING\\n")\nexcept OSError:\n    with open("/sd/power_data.txt", "w") as f:\n        f.write("STARTING POWER LOGGING\\n")'
+        )
