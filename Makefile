@@ -1,5 +1,6 @@
 PYSQUARED_VERSION ?= copilot/fix-7bfb9c49-466e-42db-a6be-dece956d6d8c
 PYSQUARED ?= git+https://github.com/proveskit/pysquared@$(PYSQUARED_VERSION)\#subdirectory=circuitpython-workspaces/flight-software
+PYSQUARED_GS ?= git+https://github.com/proveskit/pysquared@$(PYSQUARED_VERSION)\#subdirectory=circuitpython-workspaces/ground-station
 BOARD_MOUNT_POINT ?= ""
 BOARD_TTY_PORT ?= ""
 VERSION ?= $(shell git tag --points-at HEAD --sort=-creatordate < /dev/null | head -n 1)
@@ -30,11 +31,40 @@ download-libraries: download-libraries-flight-software download-libraries-ground
 .PHONY: download-libraries-%
 download-libraries-%: uv .venv ## Download the required libraries
 	@echo "Downloading libraries for $*..."
-	@$(UV) pip install --requirement src/$*/lib/requirements.txt --target src/$*/lib --no-deps --upgrade --quiet
-	@$(UV) pip --no-cache install $(PYSQUARED) --target src/$*/lib --no-deps --upgrade --quiet
+	@echo "  Cleaning old packages (keeping requirements.txt and local dirs)..."
+	@find src/$*/lib -mindepth 1 -maxdepth 1 ! -name 'requirements.txt' ! -name 'proveskit_*' -exec rm -rf {} + 2>/dev/null || true
+	@rm -rf src/$*/lib/*.dist-info src/$*/lib/.lock
+	@mkdir -p src/$*/lib
+	@TMP_INSTALL_DIR=$$(mktemp -d); \
+	trap "rm -rf $$TMP_INSTALL_DIR" EXIT INT TERM; \
+	echo "  Installing requirements from src/$*/lib/requirements.txt..."; \
+	echo "  Note: Git dependencies may take 10-30 seconds each to clone and build..."; \
+	set -e; \
+	while IFS= read -r line || [ -n "$$line" ]; do \
+		if [ -n "$$line" ] && [ "$${line#\#}" = "$$line" ]; then \
+			echo "  Installing: $$line"; \
+			echo "    (Please wait, this may take time for Git repos...)"; \
+			rm -rf "$$TMP_INSTALL_DIR"/*; \
+			$(UV) pip install "$$line" --target "$$TMP_INSTALL_DIR" --no-deps --no-cache-dir --upgrade || exit 1; \
+			cp -r "$$TMP_INSTALL_DIR"/* src/$*/lib/ 2>/dev/null || true; \
+			echo "    ✓ Installed"; \
+		fi; \
+	done < src/$*/lib/requirements.txt; \
+	echo "  Installing pysquared..."; \
+	echo "    (Please wait, this may take time for Git repos...)"; \
+	rm -rf "$$TMP_INSTALL_DIR"/*; \
+	$(UV) pip --no-cache-dir install $(PYSQUARED) --target "$$TMP_INSTALL_DIR" --no-deps --upgrade || exit 1; \
+	cp -r "$$TMP_INSTALL_DIR"/* src/$*/lib/ 2>/dev/null || true; \
+	echo "    ✓ Installed"
+
+	@if [ "$*" = "ground-station" ]; then \
+		echo "Also downloading GS..."; \
+		$(UV) pip --no-cache install $(PYSQUARED_GS) --target src/$*/lib --no-deps --upgrade --quiet; \
+	fi
 
 	@rm -rf src/$*/lib/*.dist-info
 	@rm -rf src/$*/lib/.lock
+	@echo "  Finished downloading libraries for $*"
 
 .PHONY: pre-commit-install
 pre-commit-install: uv
@@ -87,14 +117,18 @@ build: build-flight-software build-ground-station ## Build all projects
 
 .PHONY: build-*
 build-%: download-libraries-% mpy-cross ## Build the project, store the result in the artifacts directory
-	@echo "Creating artifacts/proves/$*"
+	@echo "Building $*..."
+	@echo "  Creating artifacts/proves/$*"
 	@mkdir -p artifacts/proves/$*
 	@echo "__version__ = '$(VERSION)'" > artifacts/proves/$*/version.py
 	$(call compile_mpy,$*)
+	@echo "  Copying files to artifacts..."
 	$(call rsync_to_dest,src/$*,artifacts/proves/$*/)
+	@echo "  Removing source .py files from artifacts..."
 	@$(UV) run python -c "import os; [os.remove(os.path.join(root, file)) for root, _, files in os.walk('artifacts/proves/$*/lib') for file in files if file.endswith('.py')]"
-	@echo "Creating artifacts/proves/$*.zip"
+	@echo "  Creating artifacts/proves/$*.zip"
 	@zip -r artifacts/proves/$*.zip artifacts/proves/$* > /dev/null
+	@echo "  Finished building $*"
 
 define rsync_to_dest
 	@if [ -z "$(1)" ]; then \
@@ -171,5 +205,6 @@ endif
 endif
 
 define compile_mpy
-	@$(UV) run python -c "import os, subprocess; [subprocess.run(['$(MPY_CROSS)', os.path.join(root, file)]) for root, _, files in os.walk('src/$(1)/lib') for file in files if file.endswith('.py')]" || exit 1
+	@echo "Compiling Python files to .mpy for $*..."
+	@$(UV) run python -c "import os, subprocess; files = [(r, f) for r, _, fs in os.walk('src/$(1)/lib') for f in fs if f.endswith('.py')]; print(f'Found {len(files)} Python files to compile'); [print(f'  Compiling {os.path.join(r, f)}...') or subprocess.run(['$(MPY_CROSS)', os.path.join(r, f)], check=True) for r, f in files]; print('  Finished compiling')" || exit 1
 endef
