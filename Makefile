@@ -59,7 +59,7 @@ download-libraries-%: uv .venv ## Download the required libraries
 
 	@if [ "$*" = "ground-station" ]; then \
 		echo "Also downloading GS..."; \
-		$(UV) pip --no-cache install $(PYSQUARED_GS) --target src/$*/lib --no-deps --upgrade --quiet; \
+		$(UV) pip --no-cache-dir install $(PYSQUARED_GS) --target src/$*/lib --no-deps --upgrade --quiet; \
 	fi
 
 	@rm -rf src/$*/lib/*.dist-info
