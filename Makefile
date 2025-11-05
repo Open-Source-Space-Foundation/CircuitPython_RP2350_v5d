@@ -31,6 +31,14 @@ download-libraries: download-libraries-flight-software download-libraries-ground
 .PHONY: download-libraries-%
 download-libraries-%: uv .venv ## Download the required libraries
 	@echo "Downloading libraries for $*..."
+	@$(UV) pip install --requirement src/$*/lib/requirements.txt --target src/$*/lib --no-deps --upgrade --quiet
+	@$(UV) pip --no-cache install $(PYSQUARED) --target src/$*/lib --no-deps --upgrade --quiet
+	@rm -rf src/$*/lib/*.dist-info
+	@rm -rf src/$*/lib/.lock
+
+.PHONY: linux-download-libraries-%
+download-libraries-%: uv .venv ## Download the required libraries
+	@echo "Downloading libraries for $*..."
 	@echo "  Cleaning old packages (keeping requirements.txt and local dirs)..."
 	@find src/$*/lib -mindepth 1 -maxdepth 1 ! -name 'requirements.txt' ! -name 'proveskit_*' -exec rm -rf {} + 2>/dev/null || true
 	@rm -rf src/$*/lib/*.dist-info src/$*/lib/.lock
@@ -117,13 +125,27 @@ clean: ## Remove all gitignored files such as downloaded libraries and artifacts
 .PHONY: build
 build: build-flight-software build-ground-station ## Build all projects
 
+.PHONY linux-build
+linux-build: linux-build-flight-software linux-build-ground-station
+
 .PHONY: build-*
+build-%: download-libraries-% mpy-cross ## Build the project, store the result in the artifacts directory
+	@echo "Creating artifacts/proves/$*"
+	@mkdir -p artifacts/proves/$*
+	@echo "__version__ = '$(VERSION)'" > artifacts/proves/$*/version.py
+	$(call compile_mpy,$*)
+	$(call rsync_to_dest,src/$*,artifacts/proves/$*/)
+	@$(UV) run python -c "import os; [os.remove(os.path.join(root, file)) for root, _, files in os.walk('artifacts/proves/$*/lib') for file in files if file.endswith('.py')]"
+	@echo "Creating artifacts/proves/$*.zip"
+	@zip -r artifacts/proves/$*.zip artifacts/proves/$* > /dev/null
+
+.PHONY: linux-build-*
 build-%: download-libraries-% mpy-cross ## Build the project, store the result in the artifacts directory
 	@echo "Building $*..."
 	@echo "  Creating artifacts/proves/$*"
 	@mkdir -p artifacts/proves/$*
 	@echo "__version__ = '$(VERSION)'" > artifacts/proves/$*/version.py
-	$(call compile_mpy,$*)
+	$(call linux_compile_mpy,$*)
 	@echo "  Copying files to artifacts..."
 	$(call rsync_to_dest,src/$*,artifacts/proves/$*/)
 	@echo "  Removing source .py files from artifacts..."
@@ -206,7 +228,11 @@ else
 endif
 endif
 
-define compile_mpy
+define linux_compile_mpy
 	@echo "Compiling Python files to .mpy for $*..."
 	@$(UV) run python -c "import os, subprocess; files = [(r, f) for r, _, fs in os.walk('src/$(1)/lib') for f in fs if f.endswith('.py')]; print(f'Found {len(files)} Python files to compile'); [print(f'  Compiling {os.path.join(r, f)}...') or subprocess.run(['$(MPY_CROSS)', os.path.join(r, f)], check=True) for r, f in files]; print('  Finished compiling')" || exit 1
+endef
+
+define compile_mpy
+	@$(UV) run python -c "import os, subprocess; [subprocess.run(['$(MPY_CROSS)', os.path.join(root, file)]) for root, _, files in os.walk('src/$(1)/lib') for file in files if file.endswith('.py')]" || exit 1
 endef
