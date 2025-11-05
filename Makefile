@@ -66,8 +66,6 @@ download-libraries-%: uv .venv ## Download the required libraries
 		rm -rf "$$TMP_GS_INSTALL_DIR"; \
 	fi
 
-	@rm -rf src/$*/lib/*.dist-info
-	@rm -rf src/$*/lib/.lock
 	@echo "  Finished downloading libraries for $*"
 
 .PHONY: pre-commit-install
