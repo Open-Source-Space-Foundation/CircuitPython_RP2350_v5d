@@ -37,7 +37,7 @@ download-libraries-%: uv .venv ## Download the required libraries
 	@rm -rf src/$*/lib/.lock
 
 .PHONY: linux-download-libraries-%
-download-libraries-%: uv .venv ## Download the required libraries
+linux-download-libraries-%: uv .venv ## Download the required libraries
 	@echo "Downloading libraries for $*..."
 	@echo "  Cleaning old packages (keeping requirements.txt and local dirs)..."
 	@find src/$*/lib -mindepth 1 -maxdepth 1 ! -name 'requirements.txt' ! -name 'proveskit_*' -exec rm -rf {} + 2>/dev/null || true
@@ -121,11 +121,10 @@ clean: ## Remove all gitignored files such as downloaded libraries and artifacts
 	git clean -dfX
 
 ##@ Build
-
 .PHONY: build
 build: build-flight-software build-ground-station ## Build all projects
 
-.PHONY linux-build
+.PHONY: linux-build
 linux-build: linux-build-flight-software linux-build-ground-station
 
 .PHONY: build-*
@@ -140,7 +139,7 @@ build-%: download-libraries-% mpy-cross ## Build the project, store the result i
 	@zip -r artifacts/proves/$*.zip artifacts/proves/$* > /dev/null
 
 .PHONY: linux-build-*
-build-%: download-libraries-% mpy-cross ## Build the project, store the result in the artifacts directory
+linux-build-%: linux-download-libraries-% mpy-cross ## Build the project, store the result in the artifacts directory
 	@echo "Building $*..."
 	@echo "  Creating artifacts/proves/$*"
 	@mkdir -p artifacts/proves/$*
